@@ -244,4 +244,71 @@ ngx_http_sticky_misc_hmac_md5(ngx_pool_t *pool, void *in, size_t len,
  * HMAC using SHA1
  */
 ngx_int_t
-ngx_http_sticky_misc_
+ngx_http_sticky_misc_hmac_sha1(ngx_pool_t *pool, void *in, size_t len,
+                               ngx_str_t *key, ngx_str_t *digest)
+{
+    u_char hash[SHA_DIGEST_LENGTH];
+    u_char k[SHA_CBLOCK];
+    ngx_sha1_t sha1;
+    u_int i;
+
+    digest->data = ngx_pcalloc(pool, SHA_DIGEST_LENGTH * 2);
+    if (digest->data == NULL) {
+        return NGX_ERROR;
+    }
+    digest->len = SHA_DIGEST_LENGTH * 2;
+
+    ngx_memzero(k, sizeof(k));
+
+    if (key->len > SHA_CBLOCK) {
+        ngx_sha1_init(&sha1);
+        ngx_sha1_update(&sha1, key->data, key->len);
+        ngx_sha1_final(k, &sha1);
+    } else {
+        ngx_memcpy(k, key->data, key->len);
+    }
+
+    /* XOR ipad */
+    for (i = 0; i < SHA_CBLOCK; i++) {
+        k[i] ^= 0x36;
+    }
+
+    ngx_sha1_init(&sha1);
+    ngx_sha1_update(&sha1, k, SHA_CBLOCK);
+    ngx_sha1_update(&sha1, in, len);
+    ngx_sha1_final(hash, &sha1);
+
+    /* Convert k to opad -- 0x6A = 0x36 ^ 0x5C */
+    for (i = 0; i < SHA_CBLOCK; i++) {
+        k[i] ^= 0x6a;
+    }
+
+    ngx_sha1_init(&sha1);
+    ngx_sha1_update(&sha1, k, SHA_CBLOCK);
+    ngx_sha1_update(&sha1, hash, SHA_DIGEST_LENGTH);
+    ngx_sha1_final(hash, &sha1);
+
+    ngx_hex_dump(digest->data, hash, SHA_DIGEST_LENGTH);
+    return NGX_OK;
+}
+
+/*
+ * Return raw input as digest (used when hash is not needed)
+ */
+ngx_int_t
+ngx_http_sticky_misc_text_raw(ngx_pool_t *pool, void *in, size_t len, ngx_str_t *digest)
+{
+    if (!in) {
+        return NGX_ERROR;
+    }
+
+    digest->data = ngx_pnalloc(pool, len);
+    if (digest->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(digest->data, in, len);
+    digest->len = len;
+
+    return NGX_OK;
+}
