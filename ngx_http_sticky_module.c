@@ -262,7 +262,7 @@ ngx_http_init_sticky_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *u
      */
     scf = iphp->sticky_conf;
     ck = ngx_http_parse_multi_header_lines(r,
-                                           &r->headers_in.cookie,
+                                           r->headers_in.cookie,
                                            &scf->cookie_name,
                                            &route);
     if (ck != NULL) {
@@ -527,7 +527,7 @@ ngx_http_sticky_header_filter(ngx_http_request_t *r)
     if (ctx->sticky_conf->transfer_cookie) {
         /* modernized signature; returns a pointer if found, or NULL if not */
         sc = ngx_http_parse_set_cookie_lines(r,
-                                             &r->upstream->headers_in.cookie,
+                                             r->upstream->headers_in.set_cookie,
                                              &ctx->sticky_conf->cookie_name,
                                              &transfer_cookie);
         if (sc == NULL) {
